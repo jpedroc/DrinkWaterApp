@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
 class User {
-  TimeOfDay bedtime;
-  TimeOfDay timeWakeUp;
+  String bedtime;
+  String timeWakeUp;
   int waterGoal;
   int progressDay;
 
-  User({this.bedtime, this.timeWakeUp, this.waterGoal, this.progressDay});
+  User() {
+    this.waterGoal = 0;
+    this.progressDay = 0;
+  }
 
 }

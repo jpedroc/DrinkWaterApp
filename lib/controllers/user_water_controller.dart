@@ -8,11 +8,11 @@ class UserWaterController {
   TextEditingController wakeUpTimeController = TextEditingController();
   TextEditingController waterGoalController = TextEditingController();
   TextEditingController amountDrink = TextEditingController();
-  double percentGoal;
+  double percentGoal = 0.0;
 
-
-  void initUserConfig() {
-    userInfo = new User();
+  UserWaterController() {
+    this.userInfo = new User();
+    this.percentGoal = 0.0;
   }
 
   void drinkWater() {

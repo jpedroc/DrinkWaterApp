@@ -1,4 +1,3 @@
-
 import 'package:date_format/date_format.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -14,6 +13,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  List<String> historic = [];
   String _today;
   double percentGoal = 0.0;
   User userInfo = new User();
@@ -33,18 +33,30 @@ class _HomePageState extends State<HomePage> {
     _initPage();
   }
 
+  Future<List<String>> _loadHistoric() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String> list;
+    return prefs.getStringList('historic').map((e) => list.add(e));
+  }
+
   _initPage() async {
+    this.historic = _loadHistoric().then((value) => value);
+    print(_getDateNow());
     this.userInfo = new User();
+    this._today = _getDateNow();
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       String date = (prefs.getString('today') ?? null);
-      if(date != null && _today != date) {
+      if(date != null || _today != date) {
         _today = date;
         prefs.setString('today', _today);
+        _setHistoric(this.userInfo.progressDay);
         userInfo.progressDay = 0;
+        this.percentGoal = 0.0;
       }
       else {
         this.userInfo.progressDay = prefs.getInt('progressDay') ?? 0;
+        this.percentGoal = prefs.getDouble('percentGoal');
       }
       this.userInfo.waterGoal = prefs.getInt("waterGoal") ?? 0;
       this.waterGoalController.text = prefs.getInt("waterGoal").toString() ?? "";
@@ -52,8 +64,20 @@ class _HomePageState extends State<HomePage> {
       this.wakeUpTimeController.text = prefs.getString("timeWakeUp") ?? "";
       this.userInfo.bedtime = prefs.getString('bedtime');
       this.bedtimeController.text = prefs.getString("bedtime") ?? "";
-      this.percentGoal = prefs.getDouble('percentGoal') ?? 0.0;
     });
+  }
+
+  String _getDateNow() {
+    return formatDate(DateTime.now(), [dd, '/', mm, '/', yy]);
+  }
+
+  _setHistoric(int progressDay) async{
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    if(this.historic.length == 7) {
+      this.historic.removeAt(0);
+      this.historic = historic.where((day) => day != null).toList();
+    }
+    this.historic.add("${_getDateNow()}, ${progressDay}");
   }
 
   Future<void> _selectTime(BuildContext contexte, TextEditingController controller, String keyTime) async {
@@ -93,6 +117,47 @@ class _HomePageState extends State<HomePage> {
     prefs.setInt('waterGoal', this.userInfo.waterGoal);
   }
 
+  _loadTable() {
+    return this.historic.map((day) => _createRow(day)) ?? null;
+  }
+
+  _createRow(String nameList) {
+    return TableRow(
+      children: nameList.split(',').map((name) {
+        return Container(
+          alignment: Alignment.center,
+          child: Text(
+            name,
+            style: TextStyle(fontSize: 20.0),
+          ),
+          padding: EdgeInsets.all(8.0),
+        );
+      }).toList(),
+    );
+  }
+
+  createTable() {
+    return Table(
+      defaultColumnWidth: FixedColumnWidth(150.0),
+      border: TableBorder(
+        horizontalInside: BorderSide(
+          color: Colors.black,
+          style: BorderStyle.solid,
+          width: 1.0,
+        ),
+        verticalInside: BorderSide(
+          color: Colors.black,
+          style: BorderStyle.solid,
+          width: 1.0,
+        ),
+      ),
+      children: [
+        _createRow("Dia,Quantidade bebida"),
+        ..._loadTable()
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -100,25 +165,29 @@ class _HomePageState extends State<HomePage> {
         centerTitle: true,
         title: Text('Drink Water'),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: <Widget>[
-            new InkWell(
-              onTap:() => setState(() {
-                _selectTime(context, wakeUpTimeController, "timeWakeUp");
-              }),
-              child: TextFormField(
-                decoration: InputDecoration(
-                  labelText: "Horario que acorda",
-                  hintText: wakeUpTimeController.text
-                ),
-                keyboardType: TextInputType.text,
-                enabled: false,
-                controller: wakeUpTimeController,
-              )
+      body: ListView(
+        padding: EdgeInsets.only(top: 8.0),
+        children: <Widget>[
+          new Padding(
+            padding: EdgeInsets.only(top: 8.0),
+            child: new InkWell(
+                onTap:() => setState(() {
+                  _selectTime(context, wakeUpTimeController, "timeWakeUp");
+                }),
+                child: TextFormField(
+                  decoration: InputDecoration(
+                      labelText: "Horario que acorda",
+                      hintText: wakeUpTimeController.text
+                  ),
+                  keyboardType: TextInputType.text,
+                  enabled: false,
+                  controller: wakeUpTimeController,
+                )
             ),
-            new InkWell(
+          ),
+          new Padding(
+            padding: EdgeInsets.only(top: 8.0),
+            child: new InkWell(
                 onTap:() => setState(() {
                   _selectTime(context, bedtimeController, "bedtime");
                 }),
@@ -131,52 +200,65 @@ class _HomePageState extends State<HomePage> {
                   enabled: false,
                   controller: bedtimeController,
                 )
-            ),
-            new TextFormField(
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                hintText: "Qual sua meta? (em ml)",
-                labelText: "Meta:"
+            )
+          ),
+          new Padding(
+              padding: EdgeInsets.only(top:8.0),
+              child: new TextFormField(
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                    hintText: "Qual sua meta? (em ml)",
+                    labelText: "Meta:"
+                ),
+                controller: waterGoalController,
+                onEditingComplete:
+                    () => setState(() {
+                  setWaterGoal();
+                }),
               ),
-              controller: waterGoalController,
-              onEditingComplete:
-                  () => setState(() {
-                    setWaterGoal();
-                  }),
-            ),
-            new Padding(
-              padding: EdgeInsets.all(0.8),
-            ),
-            new TextFormField(
+          ),
+          new Padding(
+            padding: EdgeInsets.all(0.8),
+            child: new TextFormField(
               keyboardType: TextInputType.number,
               controller: amountDrink,
               decoration: InputDecoration(
-                hintText: "Quantos mls você bebeu?",
-                labelText: "Quantidade bebida:"
+                  hintText: "Quantos mls você bebeu?",
+                  labelText: "Quantidade bebida:"
               ),
             ),
-            new Ink(
-              decoration: const ShapeDecoration(
-                color: Colors.blue,
-                shape: CircleBorder()
-              ),
-              child: IconButton(
-                alignment: Alignment.center,
-                color: Colors.white,
-                onPressed: () => setState(() {drinkWater();}),
-                icon: const Icon(Icons.local_drink_outlined ),
-              ),
-            ),
-            new CircularPercentIndicator(
+          ),
+          new Padding(
+              padding: EdgeInsets.only(top:8.0),
+              child: new Ink(
+                decoration: const ShapeDecoration(
+                    color: Colors.blue,
+                    shape: CircleBorder()
+                ),
+                child: IconButton(
+                  alignment: Alignment.center,
+                  color: Colors.white,
+                  onPressed: () => setState(() {drinkWater();}),
+                  icon: const Icon(Icons.local_drink_outlined ),
+                ),
+              )
+          ),
+          new Padding(
+            padding: EdgeInsets.only(top:8.0),
+            child: new CircularPercentIndicator(
               radius: 200.0,
               lineWidth: 20.0,
               center: new Text("${userInfo.progressDay} ml"),
               percent: percentGoal,
               progressColor: Colors.blue,
             )
-          ],
-        ),
-      ),
+          ),
+          new Padding(
+            padding: EdgeInsets.only(top:15.0),
+            child: createTable(),
+          )
+        ],
+      )
     );
   }
 

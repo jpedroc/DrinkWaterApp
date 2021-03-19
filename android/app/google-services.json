@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1052648267398",
+    "project_id": "procura-se-8a61f",
+    "storage_bucket": "procura-se-8a61f.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1052648267398:android:6c0857e9b22095cc0f3b07",
+        "android_client_info": {
+          "package_name": "com.example.procura_se"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1052648267398-n31qut1gu6i51hv9nr0o02a9dq1bd90j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmi6wDGgs8myWU8LCkc_gGhx7_lfaGL84"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1052648267398-n31qut1gu6i51hv9nr0o02a9dq1bd90j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

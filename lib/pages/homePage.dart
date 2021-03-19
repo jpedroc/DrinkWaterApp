@@ -1,11 +1,13 @@
 import 'package:date_format/date_format.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
-import 'package:procura_se/controllers/user_water_controller.dart';
+import 'package:procura_se/domain/item.dart';
 import 'package:procura_se/domain/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:toast/toast.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -17,7 +19,6 @@ class _HomePageState extends State<HomePage> {
   String _today;
   double percentGoal = 0.0;
   User userInfo = new User();
-  UserWaterController controller = new UserWaterController();
   String _hour;
   String _minute;
   String _time;
@@ -26,28 +27,48 @@ class _HomePageState extends State<HomePage> {
   TextEditingController wakeUpTimeController = TextEditingController();
   TextEditingController waterGoalController = TextEditingController();
   TextEditingController amountDrink = TextEditingController();
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging();
+  String _message = "";
 
   @override
   void initState() {
     super.initState();
+    _registerOnFirebase();
+    getMessage();
     _initPage();
+  }
+
+  _registerOnFirebase() {
+    _firebaseMessaging.subscribeToTopic('all');
+    _firebaseMessaging.getToken().then((token) => print(token));
+  }
+
+  void getMessage() {
+    _firebaseMessaging.configure(
+        onMessage: (Map<String, dynamic> message) async {
+          if()
+          setState(() => _message = message["notification"]["body"]);
+        }, onResume: (Map<String, dynamic> message) async {
+      setState(() => _message = message["notification"]["body"]);
+    }, onLaunch: (Map<String, dynamic> message) async {
+      setState(() => _message = message["notification"]["body"]);
+    });
   }
 
   Future<List<String>> _loadHistoric() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String> list;
-    return prefs.getStringList('historic').map((e) => list.add(e));
+    return prefs.getStringList('historic') ?? [];
   }
 
   _initPage() async {
-    this.historic = _loadHistoric().then((value) => value);
+    _loadHistoric().then((value) => this.historic = value);
     print(_getDateNow());
     this.userInfo = new User();
     this._today = _getDateNow();
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      String date = (prefs.getString('today') ?? null);
-      if(date != null || _today != date) {
+      String date = prefs.getString('today');
+      if(date != null && _today != date) {
         _today = date;
         prefs.setString('today', _today);
         _setHistoric(this.userInfo.progressDay);
@@ -56,7 +77,7 @@ class _HomePageState extends State<HomePage> {
       }
       else {
         this.userInfo.progressDay = prefs.getInt('progressDay') ?? 0;
-        this.percentGoal = prefs.getDouble('percentGoal');
+        this.percentGoal = prefs.getDouble('percentGoal') ?? 0.0;
       }
       this.userInfo.waterGoal = prefs.getInt("waterGoal") ?? 0;
       this.waterGoalController.text = prefs.getInt("waterGoal").toString() ?? "";
@@ -67,17 +88,31 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  getTime() {
+    TimeOfDay time = TimeOfDay.now();
+    const hour = time.hour;
+    const min = time.minute;
+
+    var bedtime = [];
+    var wakeUp = [];
+    bedtime = this.userInfo.bedtime.split(":");
+    wakeUp = this.userInfo.timeWakeUp.split(":");
+
+    if(hour > wakeUp[1])
+  }
+
   String _getDateNow() {
     return formatDate(DateTime.now(), [dd, '/', mm, '/', yy]);
   }
 
   _setHistoric(int progressDay) async{
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
     if(this.historic.length == 7) {
       this.historic.removeAt(0);
       this.historic = historic.where((day) => day != null).toList();
     }
-    this.historic.add("${_getDateNow()}, ${progressDay}");
+    this.historic.add("${_getDateNow()}, $progressDay");
+    prefs.setStringList('historic', this.historic);
   }
 
   Future<void> _selectTime(BuildContext contexte, TextEditingController controller, String keyTime) async {
@@ -101,6 +136,12 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void goalCompleted(BuildContext context) {
+    if(this.userInfo.progressDay >= this.userInfo.waterGoal) {
+      Toast.show("Parabéns, a meta do dia foi batida!!!", context, duration: Toast.LENGTH_LONG, gravity: Toast.TOP, backgroundColor: Colors.blue);
+    }
+  }
+
   void drinkWater() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     if(this.userInfo.waterGoal > 0) {
@@ -108,6 +149,7 @@ class _HomePageState extends State<HomePage> {
       prefs.setInt('progressDay', this.userInfo.progressDay);
       this.percentGoal = (userInfo.progressDay / userInfo.waterGoal).toDouble() > 1.0 ? 1.0 : (userInfo.progressDay / userInfo.waterGoal).toDouble();
       prefs.setDouble('percentGoal', this.percentGoal);
+      goalCompleted(this.context);
     }
   }
 
